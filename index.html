@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WEB×RECON</title>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: #000;
+      color: #00ffff;
+      font-family: 'VT323', monospace;
+      height: 100vh;
+      overflow-y: auto;
+      position: relative;
+      text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff;
+    }
+
+    canvas#matrix {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+      opacity: 0.45;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 30px auto;
+      padding: 25px;
+      border: 2px solid #00ffff;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.75);
+      box-shadow: 0 0 30px #00ffff;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      animation: glitch 1.8s infinite;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+    }
+
+    @keyframes glitch {
+      0% { transform: translate(0); }
+      20% { transform: translate(-4px, 4px); }
+      40% { transform: translate(4px, -4px); }
+      60% { transform: translate(-3px, 2px); }
+      80% { transform: translate(3px, -3px); }
+      100% { transform: translate(0); }
+    }
+
+    .input-group {
+      display: flex;
+      margin: 25px 0;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 16px;
+      font-size: 1.7rem;
+      background: #0a0a0a;
+      border: 2px solid #00ffff;
+      color: #00ffff;
+      font-family: 'VT323', monospace;
+      outline: none;
+      box-shadow: 0 0 12px #00ffff inset;
+      min-width: 300px;
+    }
+
+    button {
+      padding: 16px 50px;
+      font-size: 1.7rem;
+      background: #00ffff;
+      color: #000;
+      border: none;
+      cursor: pointer;
+      font-family: 'VT323', monospace;
+      box-shadow: 0 0 20px #00ffff;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: #00dddd;
+      box-shadow: 0 0 35px #00ffff;
+      transform: scale(1.05);
+    }
+
+    #result {
+      margin-top: 35px;
+      font-size: 1.9rem;
+      line-height: 1.6;
+      background: rgba(0,255,255,0.06);
+      padding: 25px;
+      border: 1px dashed #00ffff;
+      min-height: 300px;
+      white-space: pre-wrap;
+      overflow-y: auto;
+      max-height: 60vh;
+    }
+
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      border-left: 4px solid #00ff88;
+      background: rgba(0,255,136,0.05);
+    }
+
+    .warning {
+      color: #ff0044;
+      margin: 15px 0;
+      font-size: 1.6rem;
+      text-align: center;
+      border: 1px solid #ff0044;
+      padding: 10px;
+    }
+
+    .link {
+      color: #00ff88;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    footer {
+      text-align: center;
+      margin: 40px 0;
+      font-size: 1.4rem;
+      opacity: 0.8;
+    }
+
+    .loading { animation: blink 0.9s infinite; }
+    @keyframes blink { 50% { opacity: 0.4; } }
+  </style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+
+<div class="container">
+  <header>
+    <h1>REDHAWK-STYLE RECON SCANNER v3.0</h1>
+    <p>CYAN BLACK CYBER MODE - ADVANCED INFO GATHERING</p>
+  </header>
+
+  <div class="warning">
+    [!] Behind CDN/Cloudflare? → Shows EDGE IP only. True origin hidden.<br>
+    Ethical use ONLY. No active scanning or attacks.
+  </div>
+
+  <div class="input-group">
+    <input type="text" id="target" placeholder="example.com OR https://target.com:8443" autofocus />
+    <button onclick="launchRecon()">EXECUTE RECON</button>
+  </div>
+
+  <div id="result">[READY] ENTER TARGET DOMAIN/URL TO INITIATE RECON...</div>
+
+  <footer>
+    Client-side • Cloudflare DoH + Free APIs (ipapi.co, who-dat.as93.net) • GitHub Pages Static Tool
+  </footer>
+</div>
+
+<script>
+// Matrix rain background
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン█▓░→←↑↓';
+const fontSize = 18;
+const columns = canvas.width / fontSize;
+const drops = Array(Math.floor(columns)).fill(1);
+
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(0,0,0,0.06)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = '#00ffff';
+  ctx.font = fontSize + 'px monospace';
+
+  drops.forEach((y, i) => {
+    const text = chars[Math.floor(Math.random() * chars.length)];
+    const x = i * fontSize;
+    ctx.fillText(text, x, y * fontSize);
+
+    if (y * fontSize > canvas.height && Math.random() > 0.96) drops[i] = 0;
+    drops[i]++;
+  });
+}
+
+setInterval(drawMatrix, 45);
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+// Main recon function
+async function launchRecon() {
+  const input = document.getElementById('target').value.trim();
+  const result = document.getElementById('result');
+
+  if (!input) {
+    result.innerHTML = '[ERROR] TARGET REQUIRED.';
+    return;
+  }
+
+  let urlStr = input.startsWith('http') ? input : 'https://' + input;
+  let url;
+  try {
+    url = new URL(urlStr);
+  } catch {
+    result.innerHTML = '[FATAL] INVALID TARGET. USE domain.com or full URL.';
+    return;
+  }
+
+  const host = url.hostname;
+  const protocol = url.protocol;
+  const port = url.port || (protocol === 'https:' ? '443' : '80');
+  const isHttps = protocol === 'https:';
+
+  result.innerHTML = `[LAUNCHING RECON ON] ${host} | PORT: ${port} | PROTOCOL: ${protocol.toUpperCase().replace(':', '')}\n\n`;
+
+  // Step 1: DNS Resolution (IPv4 + IPv6)
+  let ips = { ipv4: [], ipv6: [] };
+  try {
+    const aRes = await fetch(`https://cloudflare-dns.com/dns-query?name=${host}&type=A`, { headers: { 'accept': 'application/dns-json' } });
+    const aData = await aRes.json();
+    if (aData.Status === 0 && aData.Answer) {
+      ips.ipv4 = aData.Answer.filter(r => r.type === 1).map(r => r.data);
+    }
+
+    const aaaaRes = await fetch(`https://cloudflare-dns.com/dns-query?name=${host}&type=AAAA`, { headers: { 'accept': 'application/dns-json' } });
+    const aaaaData = await aaaaRes.json();
+    if (aaaaData.Status === 0 && aaaaData.Answer) {
+      ips.ipv6 = aaaaData.Answer.filter(r => r.type === 28).map(r => r.data);
+    }
+  } catch (err) {
+    result.innerHTML += `[DNS ERROR] ${err.message}\n`;
+  }
+
+  let output = `TARGET: ${host}\nPORT: ${port}\nSECURE (HTTPS): ${isHttps ? 'YES (Likely Safer)' : 'NO (Vulnerable to MITM)'}\n\n`;
+
+  output += '[PUBLIC IPs (EDGE / CDN)]:\n';
+  if (ips.ipv4.length) {
+    output += 'IPv4:\n' + ips.ipv4.map(ip => `→ ${ip}\n`).join('');
+  } else {
+    output += 'IPv4: None / Error\n';
+  }
+  output += '\n';
+  if (ips.ipv6.length) {
+    output += 'IPv6:\n' + ips.ipv6.map(ip => `→ ${ip}\n`).join('');
+  } else {
+    output += 'IPv6: None / Error\n';
+  }
+  output += '\n';
+
+  // Step 2: WHOIS Lookup (using free who-dat API)
+  output += '[WHOIS LOOKUP] Fetching...\n';
+  try {
+    const whoisRes = await fetch(`https://who-dat.as93.net/${host}`);
+    const whois = await whoisRes.json();
+    output += `Registrar: ${whois.registrar || 'N/A'}\n`;
+    output += `Created: ${whois.creation_date || 'N/A'}\n`;
+    output += `Expires: ${whois.expiration_date || 'N/A'}\n`;
+    output += `Name Servers: ${whois.name_servers ? whois.name_servers.join(', ') : 'N/A'}\n`;
+    if (whois.name_servers && whois.name_servers.some(ns => ns.includes('cloudflare'))) {
+      output += '→ Cloudflare Detected in NS (Likely Proxied)\n';
+    }
+  } catch (err) {
+    output += `[WHOIS ERROR] ${err.message} (Rate limit?)\n`;
+  }
+  output += '\n';
+
+  // Step 3: IP Geolocation (first IPv4)
+  if (ips.ipv4.length > 0) {
+    const ip = ips.ipv4[0];
+    output += `[GEOLOCATION FOR FIRST IP: ${ip}]\n`;
+    try {
+      const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
+      const geo = await geoRes.json();
+      if (!geo.error) {
+        output += `Country: ${geo.country_name} (${geo.country_code})\n`;
+        output += `City/Region: ${geo.city}, ${geo.region} (${geo.region_code})\n`;
+        output += `Coords: ${geo.latitude}, ${geo.longitude}\n`;
+        output += `Timezone: ${geo.timezone}\n`;
+        output += `ASN/Org: ${geo.asn} - ${geo.org || 'N/A'}\n`;
+      } else {
+        output += 'Geolocation: Error or private IP\n';
+      }
+    } catch (err) {
+      output += `[GEO ERROR] ${err.message}\n`;
+    }
+  } else {
+    output += '[GEOLOCATION] No IPv4 found.\n';
+  }
+  output += '\n';
+
+  // Step 4: Safety Checks (external links)
+  output += '[SAFETY & REPUTATION CHECKS] (Click to verify externally):\n';
+  output += `→ VirusTotal URL Report: https://www.virustotal.com/gui/search/${encodeURIComponent(host)}\n`;
+  output += `→ URLScan.io Search: https://urlscan.io/search/#${encodeURIComponent(host)}\n`;
+  output += `→ Google Safe Browsing: https://transparencyreport.google.com/safe-browsing/search?url=${encodeURIComponent(urlStr)}\n`;
+  output += `→ PhishTank Check: https://phishtank.org/search.php?query=${encodeURIComponent(host)}\n`;
+  output += '\n[!] If proxied (Cloudflare etc.), safety depends on edge provider.\n';
+
+  output += '\n[RECON COMPLETE] Inspired by Red Hawk: IP, WHOIS, Geo, Safety links.\nMore advanced recon needs server-side tools.';
+
+  result.innerHTML = output;
+}
+</script>
+
+</body>
+  </html>
