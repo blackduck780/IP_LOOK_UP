@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Img2Vid • Unlimited</title>
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #0a001f, #1a0033);
+      color: #bb86fc;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      text-align: center;
+    }
+    h1 {
+      color: #bb86fc;
+      text-shadow: 0 0 20px #bb86fc;
+      margin-bottom: 8px;
+    }
+    p { opacity: 0.9; }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    #dropzone {
+      border: 3px dashed #bb86fc;
+      padding: 60px 20px;
+      margin: 25px 0;
+      border-radius: 16px;
+      background: rgba(0,0,0,0.4);
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    #dropzone:hover { background: rgba(187, 134, 252, 0.1); }
+
+    button {
+      padding: 14px 32px;
+      margin: 12px 8px;
+      background: #bb86fc;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    #status {
+      margin: 25px 0;
+      padding: 15px;
+      min-height: 70px;
+      font-size: 15px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 10px;
+      border: 1px solid #bb86fc;
+    }
+
+    video {
+      width: 100%;
+      max-width: 640px;
+      margin: 20px auto;
+      border-radius: 12px;
+      box-shadow: 0 0 30px rgba(187, 134, 252, 0.4);
+    }
+
+    .note {
+      font-size: 13px;
+      opacity: 0.7;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Img2Vid</h1>
+    <p>Create 5-Second Videos from Images • <strong>Unlimited Usage</strong></p>
+
+    <div id="dropzone">
+      Drop your images here<br>
+      <small>or click to select (multiple allowed)</small>
+      <input type="file" id="fileInput" multiple accept="image/*" style="display:none;">
+    </div>
+
+    <div>
+      <input type="text" id="textOverlay" 
+             placeholder="Add text on video (optional)" 
+             style="width:85%; max-width:600px; padding:14px; margin:10px; background:#1e1e2e; color:#fff; border:1px solid #bb86fc; border-radius:8px;">
+    </div>
+
+    <button onclick="createVideo()" id="convertBtn">🚀 Create 5 Second Video</button>
+    <button onclick="clearAll()">Clear All</button>
+
+    <div id="status">Usage is completely unlimited — No limits, no signup</div>
+    
+    <video id="outputVideo" controls></video>
+
+    <div class="note">
+      First load may take 15–30 seconds (downloads FFmpeg).<br>
+      After that, it works offline and unlimited.
+    </div>
+  </div>
+
+  <script>
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: false });
+
+    let selectedFiles = [];
+
+    document.getElementById('dropzone').addEventListener('click', () => {
+      document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      selectedFiles = Array.from(e.target.files);
+      document.getElementById('status').innerHTML = 
+        `${selectedFiles.length} image(s) selected • Unlimited usage`;
+    });
+
+    async function createVideo() {
+      const status = document.getElementById('status');
+      const videoEl = document.getElementById('outputVideo');
+      const text = document.getElementById('textOverlay').value.trim();
+      const btn = document.getElementById('convertBtn');
+
+      if (selectedFiles.length === 0) {
+        status.innerHTML = "❌ Please select at least one image";
+        return;
+      }
+
+      btn.disabled = true;
+      status.innerHTML = "Loading FFmpeg... (first time only)";
+
+      if (!ffmpeg.isLoaded()) {
+        await ffmpeg.load();
+      }
+
+      status.innerHTML = `Processing ${selectedFiles.length} images into 5-second video...`;
+
+      // Write images to FFmpeg
+      for (let i = 0; i < selectedFiles.length; i++) {
+        ffmpeg.FS('writeFile', `img${i}.jpg`, await fetchFile(selectedFiles[i]));
+      }
+
+      const durationPerImage = 5 / selectedFiles.length;
+
+      let filter = text 
+        ? `drawtext=text='${text.replace(/'/g, "\\'")}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h/2-30:box=1:boxcolor=black@0.6` 
+        : 'null';
+
+      await ffmpeg.run(
+        '-framerate', (1 / durationPerImage).toFixed(3),
+        '-i', 'img%d.jpg',
+        '-vf', filter,
+        '-c:v', 'libx264',
+        '-pix_fmt', 'yuv420p',
+        '-t', '5',
+        '-preset', 'ultrafast',
+        'output.mp4'
+      );
+
+      const data = ffmpeg.FS('readFile', 'output.mp4');
+      const blob = new Blob([data.buffer], { type: 'video/mp4' });
+      const url = URL.createObjectURL(blob);
+
+      videoEl.src = url;
+      videoEl.style.display = 'block';
+      
+      status.innerHTML = `✅ Done! 5-second video created successfully.<br>
+                          <strong>Usage is unlimited</strong> — You can create as many as you want.`;
+      
+      btn.disabled = false;
+    }
+
+    function clearAll() {
+      selectedFiles = [];
+      document.getElementById('status').innerHTML = "Usage is completely unlimited — No limits";
+      document.getElementById('outputVideo').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
